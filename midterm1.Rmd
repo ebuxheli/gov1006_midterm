@@ -1,0 +1,155 @@
+---
+title: "Midterm 1"
+author: "Enxhi Buxheli"
+date: "3/7/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+# Attaching necessary libraries
+# WARNING: when trying to use select, needed to specify dplyr::select
+library(tidyverse)
+library(mediation)
+library(memisc)
+library(Zelig)
+library(gplots)
+library(haven)
+library(dplyr)
+
+# Looking at the dataverse_files for the replication, anxiety.csv looks like
+# it's use provided information while mTurk (assuming from Amazon Mechanical
+# Turk) is the test output from the experiment [MAYBE]
+```
+
+```{r}
+# age: age of the test subject
+# storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
+# relaxvid: indicator for whether or not subject saw relaxing video "Crystal Chakra"
+# anxcond = anxietyvid: indicator for if subject saw anxiety video "Cliffhanger"
+# anxcond3: indicator whether under relaxed (0), neutral (1), or anxiety (2) conditions 
+# emo: emotion on which they gave the self-reported immigration rating
+# immigration: response to 5-point scale on immigration statements (pg. 6)
+# ideology: political preference with 1 - Liberal, 7 - Conservative
+# CellId: 1-3 (Niko, RNA), 4-6 (Jose, RNA)
+#
+# anything with a vid suffix means that video stimulus was used 
+#   [verifies that other emotions weren't inadvertently triggered]
+
+# Reading in the STATA data file using a function from the haven library
+# Looks like the numbers for age from STATA were forced to be integers (%8.0g)
+data <- read_dta("dataverse_files/replicationdata.dta")
+
+# Getting rid of the format attribute that says the data is from stata 
+# This isn't necessary, but when looking at the data it won't show format
+# anymore which is nice when handling. 
+data <- zap_formats(data)
+
+# The mean and sd for age check out!
+mean(data$age, na.rm = TRUE)
+sd(data$age, na.rm = TRUE)
+
+### Data used for figure 2
+## Skin conductivity during video
+# Relaxed
+filter(data, anxcond3 == 0) %>% 
+  summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
+# Neutral
+filter(data, anxcond3 == 1) %>% 
+  summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
+# Anxiety
+filter(data, anxcond3 == 2) %>% 
+  summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
+```
+
+
+# Not necessary at the moment
+*Label variables so tables look nice
+label var SCDBradVidManipAll_mean "SCD (Mean) During Video"
+label var SCDBradSelfReport1_mean "SCD (Mean) While Answering Questions"
+label var emo "Self-Reported Immigration Beliefs"
+label var CellID "Brader Condition (6 cells)"
+label var anxcond "Anxiety Manipulation Dummy"
+label var storycond "Story Condition"
+label var interaction "Story X Anxiety"
+label variable age "Age"
+label variable race "Race"
+label variable income "Income"
+label variable education "Education"
+label variable ideology "Ideology"
+label variable anxietyvid "Anxiety Manipulation"
+label variable relaxvid "Relax Manipulation"
+label variable anxcond3 "Anxiety Condition"
+label variable immigration "Immigration DV"
+
+
+
+
+
+*Figure 2 
+* Means of Skin Conductance Reactivity by Video Condition
+ciplot SCDBradVidManipAll_mean,by(anxcond3)
+
+
+* Table 1 in paper
+* (1)
+reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
+
+* (2) 
+reg immigration storycond anxcond SCDBradSelfReport1_mean if anxcond3 ~=0
+
+
+
+# Figure 3
+```{r, results='asis'}
+# Figure 3
+# Causal Mediation Plot
+
+
+# # Load Data
+# anxiety <- read.csv("dataverse_files/anxiety.csv")
+# 
+# ## Make Subsets (do this last)
+# noRelaxCond <- subset(anxiety, anxcond3 > 0)
+# 
+# # Outcome Model
+# y <-
+#   zelig(
+#     immigration ~ anxcond + SCDBradSelfReport1_mean + storycond,
+#     model = "ls",
+#     data = noRelaxCond
+#   )
+# summary(y) # summarize results from model
+# 
+# # Mediator Model
+# m <-
+#   zelig(SCDBradSelfReport1_mean ~ anxcond + storycond,
+#     model = "ls",
+#     data = noRelaxCond
+#   )
+# summary(m) # summarize results from model
+# 
+# # Mediation Analysis
+# m.out <-
+#   mediate(
+#     m,
+#     y,
+#     sims = 500,
+#     treat = "anxcond",
+#     mediator = "SCDBradSelfReport1_mean",
+#     dropobs = TRUE,
+#     boot = TRUE,
+#     conf.level = .90
+#   )
+# summary(m.out)
+# plot(
+#   m.out,
+#   labels = c(
+#     "ACME\n(Physiological \nReactivity)",
+#     "Direct Effect \n(Anxiety)",
+#     "Total Effect"
+#   )
+# )
+```
+
