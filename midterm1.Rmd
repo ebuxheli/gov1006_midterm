@@ -15,6 +15,7 @@ library(mediation)
 library(haven)
 library(dplyr)
 library(ggplot2)
+library(rstanarm)
 
 # Looking at the dataverse_files for the replication, anxiety.csv looks like
 # it's use provided information while mTurk (assuming from Amazon Mechanical
@@ -97,8 +98,13 @@ filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
          y = "Skin Conductance Reactivity")
 ```
 
-```{r}
+```{r table1}
+# Table 1 displays two linear regression models that comprise the two stages of
+# a causal mediation model.
+## STATA code
+# reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
 
+stan_glm(data = data, SCDBradSelfReport1_mean ~ anxcond + storycond)
 ```
 
 
