@@ -21,7 +21,7 @@ library(ggplot2)
 # Turk) is the test output from the experiment [MAYBE]
 ```
 
-```{r}
+```{r cleanup, include=FALSE}
 # age: age of the test subject
 # storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
 # relaxvid: indicator for whether or not subject saw relaxing video "Crystal Chakra"
@@ -48,9 +48,12 @@ data <- read_dta("dataverse_files/replicationdata.dta")
 data <- zap_formats(data) 
 
 # The mean and sd for age check out!
-mean_age <- mean(data$age, na.rm = TRUE)
-sd_age <- sd(data$age, na.rm = TRUE)
+mean(data$age, na.rm = TRUE)
+sd(data$age, na.rm = TRUE)
+```
 
+
+```{r figure2}
 # Function to calculate the 95% confidence interval for Skin Conductivity based
 # on the video treatment. This returns the lower and upper limit of the
 # confidence interval.
@@ -93,6 +96,11 @@ filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
     labs(x = "Video Condition",
          y = "Skin Conductance Reactivity")
 ```
+
+```{r}
+
+```
+
 
 
 # Not necessary at the moment
