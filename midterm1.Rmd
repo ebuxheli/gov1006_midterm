@@ -6,17 +6,15 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 
 # Attaching necessary libraries
 # WARNING: when trying to use select, needed to specify dplyr::select
 library(tidyverse)
 library(mediation)
-library(memisc)
-library(Zelig)
-library(gplots)
 library(haven)
 library(dplyr)
+library(ggplot2)
 
 # Looking at the dataverse_files for the replication, anxiety.csv looks like
 # it's use provided information while mTurk (assuming from Amazon Mechanical
@@ -32,7 +30,8 @@ library(dplyr)
 # emo: emotion on which they gave the self-reported immigration rating
 # immigration: response to 5-point scale on immigration statements (pg. 6)
 # ideology: political preference with 1 - Liberal, 7 - Conservative
-# CellId: 1-3 (Niko, RNA), 4-6 (Jose, RNA)
+# CellId: 1-3 (Niko, Relax Neutral Anxiety), 4-6 (Jose, Relax Neutral Anxiety)
+# SCDBradVidManipAll_mean: mean skin conductivity
 #
 # anything with a vid suffix means that video stimulus was used 
 #   [verifies that other emotions weren't inadvertently triggered]
@@ -43,24 +42,56 @@ data <- read_dta("dataverse_files/replicationdata.dta")
 
 # Getting rid of the format attribute that says the data is from stata 
 # This isn't necessary, but when looking at the data it won't show format
-# anymore which is nice when handling. 
-data <- zap_formats(data)
+# anymore which is nice when handling. Here I tried to recode the data to 
+# make it easier to read, but ran into troubles when trying to group it.
+# The data showed up fine, but the grouping failed...
+data <- zap_formats(data) 
 
 # The mean and sd for age check out!
-mean(data$age, na.rm = TRUE)
-sd(data$age, na.rm = TRUE)
+mean_age <- mean(data$age, na.rm = TRUE)
+sd_age <- sd(data$age, na.rm = TRUE)
+
+# Function to calculate the 95% confidence interval for Skin Conductivity based
+# on the video treatment. This returns the lower and upper limit of the
+# confidence interval.
+anxiety_confint <- function(anxiety) {
+  temp_dat <- filter(data, anxcond3 == anxiety)
+  anx_SCDVid <- lm(SCDBradVidManipAll_mean ~ anxcond3, data = temp_dat)
+  confint(anx_SCDVid)
+}
+
+# Here are the confidence intervals. Still trying to figure out how to get them
+# into a nice format to graph them. These intervals were created using the 
+# anxiety_confint function above.
+relax_conf   <- anxiety_confint("0")[1,1:2]
+neutral_conf <- anxiety_confint("1")[1,1:2]
+anxiety_conf <- anxiety_confint("2")[1,1:2]
 
 ### Data used for figure 2
 ## Skin conductivity during video
-# Relaxed
-filter(data, anxcond3 == 0) %>% 
+# Simple check for the data
+# Relaxed mean
+r_mean <- filter(data, anxcond3 == "0") %>% 
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
-# Neutral
-filter(data, anxcond3 == 1) %>% 
+# Neutral mean
+n_mean <- filter(data, anxcond3 == "1") %>% 
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
-# Anxiety
-filter(data, anxcond3 == 2) %>% 
+# Anxiety mean
+a_mean <- filter(data, anxcond3 == "2") %>%
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
+
+# Plotting the means as presented in Figure 2. Tried to get the 95% confidence
+# level interval to show up, but the calculation of the confidence interval
+# didn't appear to be correct.
+filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
+  group_by(anxcond3) %>% 
+  mutate(mean = mean(SCDBradVidManipAll_mean)) %>%
+  ggplot() +
+    geom_point(aes(x = anxcond3, y = mean)) +
+    #geom_errorbar(aes(ymin = lower, ymax = upper), position = "dodge", width = 0.25) +
+    scale_y_continuous(limits = c(-0.5, 1.5)) +
+    labs(x = "Video Condition",
+         y = "Skin Conductance Reactivity")
 ```
 
 
@@ -100,6 +131,13 @@ reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
 reg immigration storycond anxcond SCDBradSelfReport1_mean if anxcond3 ~=0
 
 
+
+# Figure 2
+Want to obtain a confidence interval. Can do so by running a t.test(), but want
+to look into more effective ways.
+```{r}
+
+```
 
 # Figure 3
 ```{r, results='asis'}
