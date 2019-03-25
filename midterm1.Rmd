@@ -62,14 +62,6 @@ data <- zap_formats(data)
 
 
 ```{r figure2}
-# NOTE: The below is a failed attempt to build a plot with a 95% confidence
-# interval. I am including this in the code because I believe I was close to
-# being able to reproduce the confidence interval in the paper but ran into some
-# technical troubles along the way. I also put a lot of work into trying to
-# figure this out and thought it'd be best to show that rather than delete all
-# of this and make it seem like I just copped out.
-
-# BEGIN DEFUNCT CODE:
 # Function to calculate the 95% confidence interval for Skin Conductivity based
 # on the video treatment. This returns the lower and upper limit of the
 # confidence interval for the linear model specificied in the paper.
@@ -135,18 +127,31 @@ upper_conf <- t(tibble(relax = up_relax$interval,
                        anxiety = up_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
 colnames(upper_conf) <- "upper"
 
-confidence <- cbind(lower_conf, upper_conf) %>% 
-  mutate(mean = )
+# Combining the data to be plotted
+confidence <- cbind(lower_conf, upper_conf) 
+means <- data %>% 
+  filter(!is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>% 
+  group_by(anxcond3) %>%
+  summarise(mean = mean(SCDBradVidManipAll_mean)) %>% 
+  arrange(anxcond3) 
+         
+# Binding the means and confidence to be plotted.
+# This was a Eureka moment for me and made my code go from being defunct
+# to being operational.
+f2 <- cbind(means, confidence) %>% 
+  rownames_to_column()
 
-group_by(anxcond3) %>%
- mutate(mean = mean(SCDBradVidManipAll_mean)) %>%
- ggplot() +
-   geom_point(aes(x = anxcond3, y = mean)) +
-   geom_errorbar(aes(x = type, ymin = lower_conf, ymax = upper_conf), position = "dodge", width = 0.25) +
-   scale_y_continuous(limits = c(-0.5, 1.5)) +
-   labs(x = "Video Condition",
-        y = "Skin Conductance Reactivity")
-# END DEFUNCT CODE.
+f2 %>% 
+  ggplot() +
+    geom_point(aes(x = anxcond3, y = mean)) + 
+    geom_errorbar(aes(x = anxcond3, ymin = lower, ymax = upper,
+                      color = "red"),
+                      position = "dodge", width = 0.15, fatten = 2,
+                  show.legend = FALSE) +
+    scale_y_continuous(limits = c(-0.5, 1.5)) +
+      labs(x = "Video Condition",
+           y = "Skin Conductance Reactivity")
+
 
 ### Data used for figure 2
 ## Skin conductivity during video
@@ -160,18 +165,6 @@ n_mean <- filter(data, anxcond3 == "1") %>%
 # Anxiety mean
 a_mean <- filter(data, anxcond3 == "2") %>%
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
-
-# Plotting the means as presented in Figure 2. Tried to get the 95% confidence
-# level interval to show up, but the calculation of the confidence interval
-# didn't appear to be correct.
-filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
-  ggplot(aes(x = factor(anxcond3), y = SCDBradVidManipAll_mean)) +
-  geom_boxplot() +
-  coord_flip() +
-  theme_light() +
-  scale_y_continuous(limits = c(-0.5, 1.5)) +
-    labs(x = "Video Condition",
-         y = "Skin Conductance Reactivity")
 ```
 
 ```{r table1}
