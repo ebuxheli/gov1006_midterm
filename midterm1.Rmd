@@ -10,6 +10,8 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 
 # Attaching necessary libraries
 # WARNING: when trying to use select, needed to specify dplyr::select
+#   After eliminating some libraries as they were not necessary, this
+#   may not be necessary anymore. Need to check.
 library(tidyverse)
 library(mediation)
 library(haven)
@@ -26,7 +28,9 @@ library(rstanarm)
 # age: age of the test subject
 # storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
 # relaxvid: indicator for whether or not subject saw relaxing video "Crystal Chakra"
-# anxcond = anxietyvid: indicator for if subject saw anxiety video "Cliffhanger"
+# anxcond = anxietyvid: indicator for if subject saw anxiety video "Cliffhanger".
+#       This is also a binary on whether the person was given a stressful
+#       scenario or not (neutral)
 # anxcond3: indicator whether under relaxed (0), neutral (1), or anxiety (2) conditions 
 # emo: emotion on which they gave the self-reported immigration rating
 # immigration: response to 5-point scale on immigration statements (pg. 6)
@@ -102,9 +106,18 @@ filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
 # Table 1 displays two linear regression models that comprise the two stages of
 # a causal mediation model.
 ## STATA code
+# * (1)
 # reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
+# 
+# * (2) 
+# reg immigration storycond anxcond SCDBradSelfReport1_mean if anxcond3 ~=0
+anx_data <- data %>% 
+  filter(anxcond3 != 0) %>% 
+  mutate(anxcond3 = anxcond3 - 1)
 
-stan_glm(data = data, SCDBradSelfReport1_mean ~ anxcond + storycond)
+
+t1_anxiety <- stan_glm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond)
+t1_imm     <- stan_glm(data = anx_data, immigration ~ SCDBradSelfReport1_mean + storycond) 
 ```
 
 
@@ -158,22 +171,25 @@ to look into more effective ways.
 # Figure 3
 # Causal Mediation Plot
 
+# Loading in the anxiety data to be used in the creation of the Figure 3 plot
+anxiety <- read_csv("dataverse_files/anxiety.csv")
 
-# # Load Data
-# anxiety <- read.csv("dataverse_files/anxiety.csv")
-# 
-# ## Make Subsets (do this last)
+## Make Subsets (do this last) [Note from the original code]
+# This makes a subset of those that were under the neutral and anxiety
+# conditions for the video condition.
 # noRelaxCond <- subset(anxiety, anxcond3 > 0)
 # 
 # # Outcome Model
-# y <-
-#   zelig(
+# y <- stan_glm(immigration ~ anxcond + SCDBradSelfReport1_mean + storycond,
+#               model = TRUE,
+#               data = noRelaxCond)
+# y<-  zelig(
 #     immigration ~ anxcond + SCDBradSelfReport1_mean + storycond,
 #     model = "ls",
 #     data = noRelaxCond
 #   )
 # summary(y) # summarize results from model
-# 
+
 # # Mediator Model
 # m <-
 #   zelig(SCDBradSelfReport1_mean ~ anxcond + storycond,
