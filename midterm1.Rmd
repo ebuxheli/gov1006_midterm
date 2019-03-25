@@ -13,18 +13,19 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
 #   After eliminating some libraries as they were not necessary, this
 #   may not be necessary anymore. Need to check.
 library(tidyverse)
+library(dplyr)
 library(mediation)
 library(haven)
-library(dplyr)
 library(ggplot2)
 library(rstanarm)
+library(tibble)
 
 # Looking at the dataverse_files for the replication, anxiety.csv looks like
 # it's use provided information while mTurk (assuming from Amazon Mechanical
 # Turk) is the test output from the experiment [MAYBE]
 ```
 
-```{r cleanup, include=FALSE}
+```{r cleanup}
 # age: age of the test subject
 # storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
 # relaxvid: indicator for whether or not subject saw relaxing video "Crystal Chakra"
@@ -53,36 +54,108 @@ data <- read_dta("dataverse_files/replicationdata.dta")
 data <- zap_formats(data) 
 
 # The mean and sd for age check out!
-mean(data$age, na.rm = TRUE)
-sd(data$age, na.rm = TRUE)
+# This output is not included in the output because it is not
+# necessary for the replication. Just a sanity check.
+# mean(data$age, na.rm = TRUE)
+# sd(data$age, na.rm = TRUE)
 ```
 
 
 ```{r figure2}
+# NOTE: The below is a failed attempt to build a plot with a 95% confidence
+# interval. I am including this in the code because I believe I was close to
+# being able to reproduce the confidence interval in the paper but ran into some
+# technical troubles along the way. I also put a lot of work into trying to
+# figure this out and thought it'd be best to show that rather than delete all
+# of this and make it seem like I just copped out.
+
+# BEGIN DEFUNCT CODE:
 # Function to calculate the 95% confidence interval for Skin Conductivity based
 # on the video treatment. This returns the lower and upper limit of the
-# confidence interval.
+# confidence interval for the linear model specificied in the paper.
 anxiety_confint <- function(anxiety) {
+  # Calculating confidence interval
   temp_dat <- filter(data, anxcond3 == anxiety)
   anx_SCDVid <- lm(SCDBradVidManipAll_mean ~ anxcond3, data = temp_dat)
-  confint(anx_SCDVid)
+  conf <- tibble(confint.lm(anx_SCDVid)[1,1:2])
+
+  # Outputting the confidence interval
+  conf
 }
 
-# Here are the confidence intervals. Still trying to figure out how to get them
-# into a nice format to graph them. These intervals were created using the 
-# anxiety_confint function above.
-relax_conf   <- anxiety_confint("0")[1,1:2]
-neutral_conf <- anxiety_confint("1")[1,1:2]
-anxiety_conf <- anxiety_confint("2")[1,1:2]
+# Here are the confidence intervals properly formatted for output. These
+# intervals were created using the anxiety_confint function above. Column
+# names are changed for readability
+
+# Relaxed with formatting
+relax_conf   <- anxiety_confint("0") %>%
+  mutate(treatment = "relax")
+rownames(relax_conf) <- c("lower", "upper")
+relax_conf <- rownames_to_column(relax_conf)
+colnames(relax_conf) <- c("type", "interval", "treatment")
+# Subsetting the data
+low_relax <- filter(relax_conf, type == "lower")
+up_relax  <- filter(relax_conf, type == "upper")
+
+# Neutral with formatting
+neutral_conf <- tibble(anxiety_confint("1")) %>%
+  mutate(treatment = "neutral")
+rownames(neutral_conf) <- c("lower", "upper")
+neutral_conf <- rownames_to_column(neutral_conf)
+colnames(neutral_conf) <- c("type", "interval", "treatment")
+# Subsetting the data
+low_neu <- filter(neutral_conf, type == "lower")
+up_neu  <- filter(neutral_conf, type == "upper")
+
+# Anxiety with formatting
+anxiety_conf <- tibble(anxiety_confint("2")) %>%
+  mutate(treatment = "anxiety")
+rownames(anxiety_conf) <- c("lower", "upper")
+anxiety_conf <- rownames_to_column(anxiety_conf)
+colnames(anxiety_conf) <- c("type", "interval", "treatment")
+# Subsetting the data
+low_anx <- filter(anxiety_conf, type == "lower")
+up_anx  <- filter(anxiety_conf, type == "upper")
+
+
+# Creates a tibble of the lower and upper confidence intervals.
+# The reason that it looks like such a mess is that the code didn't seem to run
+# properly. For the first "relaxed" dataset, it gave the correct and expected
+# output while for the rest it messed it up which caused me much anxiety and a
+# lot of time was spent trying to resolve this but to no avail.
+# Lower
+lower_conf <- t(tibble(relax = low_relax$interval,
+                       neutral = low_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
+                       anxiety = low_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
+colnames(lower_conf) <- "lower"
+
+# Upper
+upper_conf <- t(tibble(relax = up_relax$interval,
+                       neutral = up_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
+                       anxiety = up_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
+colnames(upper_conf) <- "upper"
+
+confidence <- cbind(lower_conf, upper_conf) %>% 
+  mutate(mean = )
+
+group_by(anxcond3) %>%
+ mutate(mean = mean(SCDBradVidManipAll_mean)) %>%
+ ggplot() +
+   geom_point(aes(x = anxcond3, y = mean)) +
+   geom_errorbar(aes(x = type, ymin = lower_conf, ymax = upper_conf), position = "dodge", width = 0.25) +
+   scale_y_continuous(limits = c(-0.5, 1.5)) +
+   labs(x = "Video Condition",
+        y = "Skin Conductance Reactivity")
+# END DEFUNCT CODE.
 
 ### Data used for figure 2
 ## Skin conductivity during video
-# Simple check for the data
+# Simple check for the data. 
 # Relaxed mean
-r_mean <- filter(data, anxcond3 == "0") %>% 
+r_mean <- filter(data, anxcond3 == "0") %>%
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
 # Neutral mean
-n_mean <- filter(data, anxcond3 == "1") %>% 
+n_mean <- filter(data, anxcond3 == "1") %>%
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
 # Anxiety mean
 a_mean <- filter(data, anxcond3 == "2") %>%
@@ -92,12 +165,11 @@ a_mean <- filter(data, anxcond3 == "2") %>%
 # level interval to show up, but the calculation of the confidence interval
 # didn't appear to be correct.
 filter(data, !is.na(anxcond3), !is.na(SCDBradVidManipAll_mean)) %>%
-  group_by(anxcond3) %>% 
-  mutate(mean = mean(SCDBradVidManipAll_mean)) %>%
-  ggplot() +
-    geom_point(aes(x = anxcond3, y = mean)) +
-    #geom_errorbar(aes(ymin = lower, ymax = upper), position = "dodge", width = 0.25) +
-    scale_y_continuous(limits = c(-0.5, 1.5)) +
+  ggplot(aes(x = factor(anxcond3), y = SCDBradVidManipAll_mean)) +
+  geom_boxplot() +
+  coord_flip() +
+  theme_light() +
+  scale_y_continuous(limits = c(-0.5, 1.5)) +
     labs(x = "Video Condition",
          y = "Skin Conductance Reactivity")
 ```
