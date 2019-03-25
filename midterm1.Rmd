@@ -61,7 +61,7 @@ data <- zap_formats(data)
 ```
 
 
-```{r figure2}
+```{r figure2, results='asis'}
 # Function to calculate the 95% confidence interval for Skin Conductivity based
 # on the video treatment. This returns the lower and upper limit of the
 # confidence interval for the linear model specificied in the paper.
@@ -116,15 +116,15 @@ up_anx  <- filter(anxiety_conf, type == "upper")
 # output while for the rest it messed it up which caused me much anxiety and a
 # lot of time was spent trying to resolve this but to no avail.
 # Lower
-lower_conf <- t(tibble(relax = low_relax$interval,
-                       neutral = low_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
-                       anxiety = low_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
+lower_conf <- t(tibble(Relax = low_relax$interval,
+                       Neutral = low_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
+                       Anxiety = low_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
 colnames(lower_conf) <- "lower"
 
 # Upper
-upper_conf <- t(tibble(relax = up_relax$interval,
-                       neutral = up_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
-                       anxiety = up_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
+upper_conf <- t(tibble(Relax = up_relax$interval,
+                       Neutral = up_neu$interval$`confint.lm(anx_SCDVid)[1, 1:2]`,
+                       Anxiety = up_anx$interval$`confint.lm(anx_SCDVid)[1, 1:2]`))
 colnames(upper_conf) <- "upper"
 
 # Combining the data to be plotted
@@ -139,18 +139,19 @@ means <- data %>%
 # This was a Eureka moment for me and made my code go from being defunct
 # to being operational.
 f2 <- cbind(means, confidence) %>% 
-  rownames_to_column()
+  rownames_to_column() 
 
 f2 %>% 
   ggplot() +
-    geom_point(aes(x = anxcond3, y = mean)) + 
-    geom_errorbar(aes(x = anxcond3, ymin = lower, ymax = upper,
+    geom_point(aes(x = rowname, y = mean)) + 
+    geom_errorbar(aes(x = rowname, ymin = lower, ymax = upper,
                       color = "red"),
                       position = "dodge", width = 0.15, fatten = 2,
                   show.legend = FALSE) +
     scale_y_continuous(limits = c(-0.5, 1.5)) +
       labs(x = "Video Condition",
-           y = "Skin Conductance Reactivity")
+           y = "Skin Conductance Reactivity") +
+    theme_light()
 
 
 ### Data used for figure 2
@@ -166,6 +167,8 @@ n_mean <- filter(data, anxcond3 == "1") %>%
 a_mean <- filter(data, anxcond3 == "2") %>%
   summarise(mean = mean(SCDBradVidManipAll_mean, na.rm = TRUE))
 ```
+Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red
+
 
 ```{r table1}
 # Table 1 displays two linear regression models that comprise the two stages of
