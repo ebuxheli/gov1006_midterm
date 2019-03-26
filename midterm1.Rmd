@@ -61,7 +61,7 @@ data <- zap_formats(data)
 # sd(data$age, na.rm = TRUE)
 ```
 
-
+# Figure 2
 ```{r figure2, results='asis'}
 # Below you will find a lot of code in order to make the confidence 
 # interval for figure 2. It was tedious, it was anxiety-inducing, but
@@ -178,22 +178,17 @@ f2 %>%
                       position = "dodge", width = 0.15,
                   show.legend = FALSE) +
     scale_y_continuous(limits = c(-0.5, 1.5)) +
+    coord_flip() +
       labs(x = "Video Condition",
            y = "Skin Conductance Reactivity") +
     theme_light()
 ```
-Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red
+Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red.
 
-
-```{r table1, cache = TRUE, results='asis'}
+# Table 1
+```{r table1, results='asis'}
 # Table 1 displays two linear regression models that comprise the two stages of
 # a causal mediation model.
-## STATA code
-# * (1)
-# reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
-# 
-# * (2) 
-# reg immigration storycond anxcond SCDBradSelfReport1_mean if anxcond3 ~=0
 
 # According to the State code and the article, when they were running their
 # regression they excluded the Relax condition as they wanted to see if Anxiety
@@ -203,14 +198,16 @@ Figure 2: Means of skin-conductance reactivity by video condition. 95% confidenc
 # of anxiety.
 
 # Filter the data to only include the Neutral and Anxiety story conditions.
-anx_data <- data %>% 
+anx_data <- data %>%
   filter(anxcond3 != 0)
 
-# Performing the linear regression for the filtered data
+# Performing the linear regression for the filtered data based off of the
+# specifications of the article and Stata code.
 t1_anxiety <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond)
-t1_imm     <- lm(data = anx_data, immigration ~ anxcond + storycond + SCDBradSelfReport1_mean) 
+t1_imm     <- lm(data = anx_data, immigration ~ anxcond + storycond + SCDBradSelfReport1_mean)
 
 stargazer(t1_anxiety, t1_imm,
+          type = "latex",
           header = FALSE, style = "apsr", omit.stat = c("f","ser", "adj.rsq"), font.size = "small",
           column.sep.width = "-8pt", digits = 3,
           dep.var.labels = c("SC Reactivity", "Immigration Preference"),
@@ -239,75 +236,47 @@ label variable relaxvid "Relax Manipulation"
 label variable anxcond3 "Anxiety Condition"
 label variable immigration "Immigration DV"
 
-
-* Table 1 in paper
-* (1)
-reg SCDBradSelfReport1_mean anxcond if anxcond3 ~=0
-
-* (2) 
-reg immigration storycond anxcond SCDBradSelfReport1_mean if anxcond3 ~=0
-
-
-
-# Figure 2
-Want to obtain a confidence interval. Can do so by running a t.test(), but want
-to look into more effective ways.
-```{r}
-
-```
-
 # Figure 3
 ```{r, results='asis'}
 # Figure 3
 # Causal Mediation Plot
 
-# Loading in the anxiety data to be used in the creation of the Figure 3 plot
+# There is a slight difference between the data I created [and called data], and
+# the anxiety data. Could potentially use the overall data [my data] instead of
+# loading in the anxiety.csv since they contain the same information, just not
+# all of the same fields.
+
+# Loading in the anxiety data to be used in the creation of the Figure 3 plot.
 anxiety <- read_csv("dataverse_files/anxiety.csv")
 
-## Make Subsets (do this last) [Note from the original code]
-# This makes a subset of those that were under the neutral and anxiety
-# conditions for the video condition.
-# noRelaxCond <- subset(anxiety, anxcond3 > 0)
-# 
-# # Outcome Model
-# y <- stan_glm(immigration ~ anxcond + SCDBradSelfReport1_mean + storycond,
-#               model = TRUE,
-#               data = noRelaxCond)
-# y<-  zelig(
-#     immigration ~ anxcond + SCDBradSelfReport1_mean + storycond,
-#     model = "ls",
-#     data = noRelaxCond
-#   )
-# summary(y) # summarize results from model
+# This filters those that were under the neutral and anxiety
+# conditions for the video condition similar to table 1. 
+noRelaxCond <- anxiety %>% 
+  filter(anxcond3 != 0)
 
-# # Mediator Model
-# m <-
-#   zelig(SCDBradSelfReport1_mean ~ anxcond + storycond,
-#     model = "ls",
-#     data = noRelaxCond
-#   )
-# summary(m) # summarize results from model
-# 
-# # Mediation Analysis
-# m.out <-
-#   mediate(
-#     m,
-#     y,
-#     sims = 500,
-#     treat = "anxcond",
-#     mediator = "SCDBradSelfReport1_mean",
-#     dropobs = TRUE,
-#     boot = TRUE,
-#     conf.level = .90
-#   )
-# summary(m.out)
-# plot(
-#   m.out,
-#   labels = c(
-#     "ACME\n(Physiological \nReactivity)",
-#     "Direct Effect \n(Anxiety)",
-#     "Total Effect"
-#   )
-# )
+# Outcome Model. This is the same model as from table 1.
+y <- lm(data = noRelaxCond, immigration ~ anxcond + storycond + SCDBradSelfReport1_mean)
+summary(y) # summarize results from model
+
+# Mediator Model. This one I made into a lm function which
+# already includes modelling as a default option.
+m <- lm(data = noRelaxCond, SCDBradSelfReport1_mean ~ anxcond + storycond)
+summary(m) # summarize results from model
+
+# Mediation Analysis
+m.out <- mediate(m, y, sims = 500, treat = "anxcond",
+                 mediator = "SCDBradSelfReport1_mean", 
+                 dropobs = TRUE, boot = TRUE, conf.level = .90)
+summary(m.out)
+
+
+plot(
+  m.out,
+  labels = c(
+    "ACME\n(Physiological \nReactivity)",
+    "Direct Effect \n(Anxiety)",
+    "Total Effect"
+  )
+)
 ```
 
