@@ -208,11 +208,14 @@ anx_data <- data %>%
 
 # Performing the linear regression for the filtered data
 t1_anxiety <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond)
-t1_imm     <- lm(data = anx_data, immigration ~ SCDBradSelfReport1_mean + storycond + anxcond) 
+t1_imm     <- lm(data = anx_data, immigration ~ anxcond + storycond + SCDBradSelfReport1_mean) 
 
 stargazer(t1_anxiety, t1_imm,
-          header = FALSE, style = "apsr", font.size = "small",
-          column.sep.width = "-8pt", digits = 3)
+          header = FALSE, style = "apsr", omit.stat = c("f","ser", "adj.rsq"), font.size = "small",
+          column.sep.width = "-8pt", digits = 3,
+          dep.var.labels = c("SC Reactivity", "Immigration Preference"),
+          covariate.labels = c("Anxiety Manipulation","Story Condition",
+                               "SC Reactivity while answering questions", "Constant"))
 ```
 
 
