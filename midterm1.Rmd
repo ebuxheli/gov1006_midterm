@@ -185,8 +185,7 @@ f2 %>%
 Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red
 
 
-```{r table1_prep, include=FALSE, cache = TRUE, results='asis'}
-# This code block is dedicated to the preparation of the data for the replication of the data in Table 1. This makes it possible to avoid the junk output in the PDF, but still allows me to use it. By avoiding the junk output by putting it in this block, I can use the rstanarm package to perform regressions. 
+```{r table1, cache = TRUE, results='asis'}
 # Table 1 displays two linear regression models that comprise the two stages of
 # a causal mediation model.
 ## STATA code
@@ -211,13 +210,9 @@ anx_data <- data %>%
 t1_anxiety <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond)
 t1_imm     <- lm(data = anx_data, immigration ~ SCDBradSelfReport1_mean + storycond + anxcond) 
 
-# mod_1 <- lm(lib_vote_share ~ as.factor(girls) + as.factor(child), 
-#	data = judge_data_leq14, weights = judge_data_leq14$no_cases)
-
-
-# stargazer(t1_anxiety, t1_imm, 
-#           header = FALSE, style = "apsr", font.size = "small",
-#           column.sep.width = "-8pt", digits = 2)
+stargazer(t1_anxiety, t1_imm,
+          header = FALSE, style = "apsr", font.size = "small",
+          column.sep.width = "-8pt", digits = 3)
 ```
 
 
