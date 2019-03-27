@@ -3,6 +3,8 @@ title: "Midterm 1"
 author: "Enxhi Buxheli"
 date: "3/7/2019"
 output: pdf_document
+citation_package: natbib
+bibliography: bibliography.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -26,6 +28,10 @@ library(stargazer)
 # Turk) is the test output from the experiment [MAYBE]
 ```
 
+# Abstract: 
+Below is a replication of the tables and figures from J. Renshon, J. Lee, and D. Tingley's "Physiological Arousal and Political Beliefs" [@paper]. This replication draws from code taken from the Dataverse [@arousal] on the paper, but builds on it. The intention of this replication is to provide a better understanding and present the data and tables in a more appealing way. In addition to this, the code was remade using R rather than the original mixed use of Stata and R but also refines the existing code base for the existing paper. In the paper, there are three figures and one table. Figures 2 and 3 and Table 1 can be replicated completely, although I chose to make some modifications to their appearance and presentation. Figure 1 cannot be reproduced using R or any type of statistical or quantitative coding as it is diagram of the experiment's procedures. In the experiment, @arousal finds that physiological reactivity mediated the relationship between anxiety and political attitudes through treatment conditions.
+
+
 ```{r cleanup}
 # age: age of the test subject
 # storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
@@ -45,7 +51,9 @@ library(stargazer)
 
 # Reading in the STATA data file using a function from the haven library
 # Looks like the numbers for age from STATA were forced to be integers (%8.0g)
-data <- read_dta("dataverse_files/replicationdata.dta")
+data <- read_dta("dataverse_files/replicationdata.dta") %>% 
+  dplyr::select(anxcond, anxcond3, storycond, immigration, 
+                SCDBradSelfReport1_mean, SCDBradVidManipAll_mean)
 
 # Getting rid of the format attribute that says the data is from stata 
 # This isn't necessary, but when looking at the data it won't show format
@@ -185,6 +193,7 @@ f2 %>%
 ```
 Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red.
 
+\newpage
 # Table 1
 ```{r table1, results='asis'}
 # Table 1 displays two linear regression models that comprise the two stages of
@@ -214,69 +223,65 @@ stargazer(t1_anxiety, t1_imm,
           covariate.labels = c("Anxiety Manipulation","Story Condition",
                                "SC Reactivity while answering questions", "Constant"))
 ```
+Note. Model (1) shows the effect of the treatment (anxiety) on physiological reactivity while Model (2) shows the effects of physiological reactivity on immigration preferences, controlling for the story condition. Both models includes only Neutral & Anxiety conditions (Relax condition is excluded).
+Standard errors in brackets.
 
-
-
-# Not necessary at the moment
-*Label variables so tables look nice
-label var SCDBradVidManipAll_mean "SCD (Mean) During Video"
-label var SCDBradSelfReport1_mean "SCD (Mean) While Answering Questions"
-label var emo "Self-Reported Immigration Beliefs"
-label var CellID "Brader Condition (6 cells)"
-label var anxcond "Anxiety Manipulation Dummy"
-label var storycond "Story Condition"
-label var interaction "Story X Anxiety"
-label variable age "Age"
-label variable race "Race"
-label variable income "Income"
-label variable education "Education"
-label variable ideology "Ideology"
-label variable anxietyvid "Anxiety Manipulation"
-label variable relaxvid "Relax Manipulation"
-label variable anxcond3 "Anxiety Condition"
-label variable immigration "Immigration DV"
-
+\newpage
 # Figure 3
 ```{r, results='asis'}
 # Figure 3
 # Causal Mediation Plot
 
-# There is a slight difference between the data I created [and called data], and
-# the anxiety data. Could potentially use the overall data [my data] instead of
-# loading in the anxiety.csv since they contain the same information, just not
-# all of the same fields.
+# The data I created [called data], and the anxiety data were the same bar the
+# anxiety dataset having fewer fields. As a result, I used the overall data [my
+# data] instead of loading in the anxiety.csv since they contain the same
+# information, just not all of the same fields.
 
-# Loading in the anxiety data to be used in the creation of the Figure 3 plot.
-anxiety <- read_csv("dataverse_files/anxiety.csv")
+# Outcome Model. This is the same as the immigration model from table 1. I
+# created a new variable just to make the code more readable for this block.
+outcome <- t1_imm
+# summary(outcome)    # summarize results from model, used in development
 
-# This filters those that were under the neutral and anxiety
-# conditions for the video condition similar to table 1. 
-noRelaxCond <- anxiety %>% 
-  filter(anxcond3 != 0)
-
-# Outcome Model. This is the same model as from table 1.
-y <- lm(data = noRelaxCond, immigration ~ anxcond + storycond + SCDBradSelfReport1_mean)
-summary(y) # summarize results from model
-
-# Mediator Model. This one I made into a lm function which
-# already includes modelling as a default option.
-m <- lm(data = noRelaxCond, SCDBradSelfReport1_mean ~ anxcond + storycond)
-summary(m) # summarize results from model
+# Mediator Model. This one I made into a lm function which already includes
+# modelling as a default option. 
+# Didn't know what a mediator was, so I took a look back at Gelman and Hill to
+# find out that a mediator is a variable measured after the treatment has been
+# done, but before the outcome of interest comes out. Here, our mediator looks
+# at the skin conductivity relation resulting from anxiety and story conditions,
+# but our outcome of interest is seeing the way which this impacts immigration
+# preferences based on the treatment that they are given. The immigration
+# preference outcome model takes into consideration skin conductivity while the
+# mediator looks at the impact of skin conductivity based on teh anxiety and
+# story condition which is also used in the outcome model.
+mediator <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond + storycond)
+# summary(mediator)    # summarize results from model, used in development
 
 # Mediation Analysis
-m.out <- mediate(m, y, sims = 500, treat = "anxcond",
-                 mediator = "SCDBradSelfReport1_mean", 
-                 dropobs = TRUE, boot = TRUE, conf.level = .90)
-summary(m.out)
+med_analysis <- mediate(mediator, outcome, sims = 500, treat = "anxcond",
+                        mediator = "SCDBradSelfReport1_mean", 
+                        dropobs = TRUE, boot = TRUE, conf.level = .90)
+# summary(med_analysis)   # summarize results from model, used in development
 
+# Here is the plot of the data in figure 3. I was trying to use other plotting
+# libraries, but it seems that the mediation package only easily allows for the
+# plotting of their mediate object with their own plot function. This plot
+# function, while it doesn't seem to be, is a function of the package and can
+# handle the mediate object.
 
-plot(
-  m.out,
-  labels = c(
-    "ACME\n(Physiological \nReactivity)",
-    "Direct Effect \n(Anxiety)",
-    "Total Effect"
-  )
-)
+# Setting the parameters for the plot output
+par(family = "Times", cex = 0.75, mar = c(5,6,4,1)+.1)
+
+## Notes on what the plot labels are.
+# Average causal mediation effect (ACME) is the effect caused by the mediator
+# Direct effect is the effect without considering the mediator
+# Total efect is the combined effect of the mediator and the anxiety condition
+
+# Plot output.
+plot(med_analysis, labels = c("ACME\n(Physiological \nReactivity)", 
+                              "Direct Effect \n(Anxiety)", 
+                              "Total Effect"),
+     main = "Linear Model of Treatment Effects with and without Mediation", xlab = "Magnitude of Effect")
 ```
+Figure 3. Causal mediation plot. Treatment is anxiety video manipulation (compared to neutral condition), Mediator is skin conductance reactivity when answering immigration questions, Outcome is composite variable of immigration preferences. Horizontal lines represent 90% confidence intervals for estimates.
 
+# References
