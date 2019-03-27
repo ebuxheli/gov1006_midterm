@@ -197,6 +197,8 @@ f2 %>%
 ```
 Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red.
 
+This plot shows mean skin conductivity when the subject was undergoing the video treatment. The confidence interval shows the range of skin conductivity for those of the different video treatments and see that an increase in anxiety is associated with an incresae in skin conductivity.
+
 \newpage
 ## Table 1
 ```{r table1, results='asis'}
@@ -288,6 +290,7 @@ plot(med_analysis, labels = c("ACME\n(Physiological \nReactivity)",
 ```
 Figure 3. Causal mediation plot. Treatment is anxiety video manipulation (compared to neutral condition), Mediator is skin conductance reactivity when answering immigration questions, Outcome is composite variable of immigration preferences. Horizontal lines represent 90% confidence intervals for estimates.
 
+This plot is used to show that skin conductivity served as a mediator between anxiety and immigration preferences in treatment conditions. The direct effects are also quantified under "Immigration Preferences" in Table 1.
 
 # Extension: Bayesian Models and Comparisons
 ```{r ex1}
