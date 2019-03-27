@@ -32,7 +32,7 @@ library(knitr)
 ```
 
 # Abstract: 
-Below is a replication of the tables and figures from J. Renshon, J. Lee, and D. Tingley's "Physiological Arousal and Political Beliefs" [@paper]. This replication draws from code taken from the Dataverse [@arousal] on the paper, but builds on it. The intention of this replication is to provide a better understanding and present the data and tables in a more appealing way. In addition to this, the code was remade using R rather than the original mixed use of Stata and R but also refines the existing code base for the existing paper. In the paper, there are three figures and one table. Figures 2 and 3 and Table 1 can be replicated completely, although I chose to make some modifications to their appearance and presentation. Figure 1 cannot be reproduced using R or any type of statistical or quantitative coding as it is diagram of the experiment's procedures. In the experiment, @arousal finds that physiological reactivity mediated the relationship between anxiety and political attitudes through treatment conditions.
+Below is a replication of the tables and figures from J. Renshon, J. Lee, and D. Tingley's "Physiological Arousal and Political Beliefs" [@paper]. This replication draws from code taken from the Dataverse [@arousal] on the paper, but builds on it. The intention of this replication is to provide a better understanding and present the data and tables in a more appealing way. In addition to this, the code was remade using R rather than the original mixed use of Stata and R but also refines the existing code base for the existing paper. In the paper, there are three figures and one table. Figures 2 and 3 and Table 1 can be replicated completely, although I chose to make some modifications to their appearance and presentation. Figure 1 cannot be reproduced using R or any type of statistical or quantitative coding as it is diagram of the experiment's procedures. In the experiment, @arousal finds that physiological reactivity mediated the relationship between anxiety and political attitudes through treatment conditions. I also extended the modelling done in the paper by considering ideology as a factor in the immigration preferences, examining mediation effects, and also by performing Bayesian modelling rather than the simple linear modelling done in the paper. Even when including ideology, the result remained that physiological reactivity played a role in the mediation of effects. Additionally, ideology played a slight role in the determination of immigration preferences, but not of significance.
 
 
 ```{r cleanup}
@@ -289,7 +289,6 @@ plot(med_analysis, labels = c("ACME\n(Physiological \nReactivity)",
 Figure 3. Causal mediation plot. Treatment is anxiety video manipulation (compared to neutral condition), Mediator is skin conductance reactivity when answering immigration questions, Outcome is composite variable of immigration preferences. Horizontal lines represent 90% confidence intervals for estimates.
 
 
-\newpage
 # Extension: Bayesian Models and Comparisons
 ```{r ex1}
 # Setting the seed for random number generation
@@ -317,16 +316,39 @@ bayes_pred <- posterior_linpred(mod)
 pp_check(mod, "dens_overlay") + 
   labs(title = "Immigration Preferences Distribution: Actual vs. Bayesian Linear Model Predictions",
        caption = "The Bayesian doesn't perform as well as it should because the bounds 
-       of immgration preference weren't set to be between 1-5 for the model.")
+       of immgration preference weren't set to be between 1-5 for the model.") + 
+  theme(plot.title = element_text(size = 12, face = "bold"))
 cat("\n") 
-pp_check(mod, "stat_2d") +
-  labs(title = "Immigration Statistics: Actual vs. Bayesian Linear Model Predictions",
-       x = "Mean",
-       y = "Standard Deviation")
+pp_check(ideo_mod, "dens_overlay") +
+  labs(title = "Immigration Preferences Distribution: Actual vs. Bayesian (Ideology Inclusive) Linear Model Predictions",
+       caption = "This Bayesian has a larger tailing on the left,
+       which is undesirable but the model fits well.") +
+  theme(plot.title = element_text(size = 10, face = "bold"))
 ```
 
-### Model Fit Comparison: Should ideology be considered?
-```{r ex2}
+## Mediation Effects on Bayesian Model, Inclusive of Ideology
+```{r ex2, results='asis'}
+# Creating a new mediator that includes ideology as being a contributor to skin
+# conductivity as posited by the original article pg.12
+ideo_mediator <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond + storycond)
+
+# Creating a mediation plot to see if the effects hold in the gaussian
+hide3 <- capture.output(bayes_med <- mediate(ideo_mediator, ideo_mod, sims = 500, treat = "anxcond",
+                                             mediator = "SCDBradSelfReport1_mean", 
+                                             dropobs = TRUE, conf.level = .90)) 
+
+# Setting the parameters for the plot output
+par(family = "Times", cex = 0.75, mar = c(5,6,4,1)+.1) 
+plot(bayes_med, labels = c("ACME\n(Physiological \nReactivity)", 
+                           "Direct Effect \n(Anxiety \n & Ideology)", 
+                           "Total Effect"),
+     main = "Bayesian Model of Treatment Effects with and without Mediation", xlab = "Magnitude of Effect")
+```
+
+Extension of Figure 3: This is a causal mediation plot for the Bayesian model of immigration preferences inclusive of ideological effects. The horizontal lines represent 90% confidence intervals for estimates. We see that the Direct Effects are lower as a result of the introduction of ideology as a factor on immigration preferences, but that the ACME (average causal mediation effect is largely unchanged). This plot still shows that physiological reactivity mediated the relationship between anxiety and political attitudes.
+
+## Model Predictivity: With and Without Ideology
+```{r ex3}
 # Performing a comparison of the basic linear model to the Bayesian model to 
 # find which perform better. The mediator was used in Figure 3 to create predictions
 # and is also the same model used in Table 1 for immigration preferences.
@@ -342,7 +364,7 @@ fit <- tibble(compare(loo_orig, loo_ideo)) %>%
                           "2" = "Standard Error"))
 colnames(fit) <- c("Stats", "Magnitude")
 
-# Outputting table with results
+# Outputting table with results of model predictivity
 fit %>% 
   mutate(Magnitude = round(Magnitude, 2)) %>% 
   kable(booktabs = TRUE)
@@ -351,5 +373,5 @@ fit %>%
 Since the model fit is positive when doing a leave-one-out comparison on the original paper's model to a new model where ideology is considered in immigration preferences, this means that the model which considers ideology is a better predictor of immigration preferences than the original paper. 
 
 
-
+\newpage
 # References
