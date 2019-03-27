@@ -20,8 +20,11 @@ library(mediation)
 library(haven)
 library(ggplot2)
 library(rstanarm)
+library(rstan)
+library(loo)
 library(tibble)
 library(stargazer)
+library(knitr)
 
 # Looking at the dataverse_files for the replication, anxiety.csv looks like
 # it's use provided information while mTurk (assuming from Amazon Mechanical
@@ -52,7 +55,7 @@ Below is a replication of the tables and figures from J. Renshon, J. Lee, and D.
 # Reading in the STATA data file using a function from the haven library
 # Looks like the numbers for age from STATA were forced to be integers (%8.0g)
 data <- read_dta("dataverse_files/replicationdata.dta") %>% 
-  dplyr::select(anxcond, anxcond3, storycond, immigration, 
+  dplyr::select(anxcond, anxcond3, storycond, immigration, ideology,
                 SCDBradSelfReport1_mean, SCDBradVidManipAll_mean)
 
 # Getting rid of the format attribute that says the data is from stata 
@@ -69,8 +72,9 @@ data <- zap_formats(data)
 # sd(data$age, na.rm = TRUE)
 ```
 
-# Figure 2
-```{r figure2, results='asis'}
+# Replications:
+## Figure 2
+```{r fig2, results='asis'}
 # Below you will find a lot of code in order to make the confidence 
 # interval for figure 2. It was tedious, it was anxiety-inducing, but
 # it eventually worked. For whatever reason, the confint function was 
@@ -194,7 +198,7 @@ f2 %>%
 Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red.
 
 \newpage
-# Table 1
+## Table 1
 ```{r table1, results='asis'}
 # Table 1 displays two linear regression models that comprise the two stages of
 # a causal mediation model.
@@ -227,8 +231,8 @@ Note. Model (1) shows the effect of the treatment (anxiety) on physiological rea
 Standard errors in brackets.
 
 \newpage
-# Figure 3
-```{r, results='asis'}
+## Figure 3
+```{r fig3, results='asis'}
 # Figure 3
 # Causal Mediation Plot
 
@@ -283,5 +287,69 @@ plot(med_analysis, labels = c("ACME\n(Physiological \nReactivity)",
      main = "Linear Model of Treatment Effects with and without Mediation", xlab = "Magnitude of Effect")
 ```
 Figure 3. Causal mediation plot. Treatment is anxiety video manipulation (compared to neutral condition), Mediator is skin conductance reactivity when answering immigration questions, Outcome is composite variable of immigration preferences. Horizontal lines represent 90% confidence intervals for estimates.
+
+
+\newpage
+# Extension: Bayesian Models and Comparisons
+```{r ex1}
+# Setting the seed for random number generation
+set.seed(9)
+
+# Creating a Bayesian model [and not showing all of the chains]
+# adapt_delta reduces the likelihood for a biased model. Not absolutely
+# sure what this means at a complex level, but I do know that biased models
+# are bad and that this helps us avoid them.
+hide1 <- capture.output(mod <- stan_glm(immigration ~ SCDBradSelfReport1_mean + storycond + anxcond,
+                                       data = anx_data, control = list(adapt_delta = 0.99)))
+
+# This second model will be used as a comparison to the model in the study to
+# see if ideology plays a factor in the overall answer for immigration and
+# if it provides a better fit overall.
+hide2 <- capture.output(ideo_mod <- stan_glm(immigration ~ SCDBradSelfReport1_mean + storycond + anxcond + ideology,
+                                             data = anx_data, control = list(adapt_delta = 0.99)))
+
+# Variable with the Bayesian predictions
+bayes_pred <- posterior_linpred(mod)
+
+# View the predicted data in comparison to the actual immigration statistic.
+# The following is used to see how well the Bayesian model predicts the actual
+# data.
+pp_check(mod, "dens_overlay") + 
+  labs(title = "Immigration Preferences Distribution: Actual vs. Bayesian Linear Model Predictions",
+       caption = "The Bayesian doesn't perform as well as it should because the bounds 
+       of immgration preference weren't set to be between 1-5 for the model.")
+cat("\n") 
+pp_check(mod, "stat_2d") +
+  labs(title = "Immigration Statistics: Actual vs. Bayesian Linear Model Predictions",
+       x = "Mean",
+       y = "Standard Deviation")
+```
+
+### Model Fit Comparison: Should ideology be considered?
+```{r ex2}
+# Performing a comparison of the basic linear model to the Bayesian model to 
+# find which perform better. The mediator was used in Figure 3 to create predictions
+# and is also the same model used in Table 1 for immigration preferences.
+loo_ideo <- loo(ideo_mod)
+loo_orig <- loo(mod)
+
+# The compare yields a result which says that the second model is better.
+# Unsure if this is the result of overfitting.
+fit <- tibble(compare(loo_orig, loo_ideo)) %>% 
+  rownames_to_column() %>% 
+  mutate(rowname = recode(rowname,
+                          "1" = "Model Fit",
+                          "2" = "Standard Error"))
+colnames(fit) <- c("Stats", "Magnitude")
+
+# Outputting table with results
+fit %>% 
+  mutate(Magnitude = round(Magnitude, 2)) %>% 
+  kable(booktabs = TRUE)
+```
+
+Since the model fit is positive when doing a leave-one-out comparison on the original paper's model to a new model where ideology is considered in immigration preferences, this means that the model which considers ideology is a better predictor of immigration preferences than the original paper. 
+
+
 
 # References
