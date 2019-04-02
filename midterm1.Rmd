@@ -34,8 +34,12 @@ library(knitr)
 # Abstract: 
 Below is a replication of the tables and figures from J. Renshon, J. Lee, and D. Tingley's "Physiological Arousal and Political Beliefs" [@paper]. This replication draws from code taken from the Dataverse [@arousal] on the paper, but builds on it. The intention of this replication is to provide a better understanding and present the data and tables in a more appealing way. In addition to this, the code was remade using R rather than the original mixed use of Stata and R but also refines the existing code base for the existing paper. In the paper, there are three figures and one table. Figures 2 and 3 and Table 1 can be replicated completely, although I chose to make some modifications to their appearance and presentation. Figure 1 cannot be reproduced using R or any type of statistical or quantitative coding as it is diagram of the experiment's procedures. In the experiment, @arousal finds that physiological reactivity mediated the relationship between anxiety and political attitudes through treatment conditions. I also extended the modelling done in the paper by considering ideology as a factor in the immigration preferences, examining mediation effects, and also by performing Bayesian modelling rather than the simple linear modelling done in the paper. Even when including ideology, the result remained that physiological reactivity played a role in the mediation of effects. Additionally, ideology played a slight role in the determination of immigration preferences, but not of significance.
 
+Really thorough and informative introduction!
+
 
 ```{r cleanup}
+Great notes to include. Super helpful for you if you ever come back, and anyone replicating
+
 # age: age of the test subject
 # storycond: indicator for which randomly assigned 1 of 2 stories for subject (Jose/Niko)
 # relaxvid: indicator for whether or not subject saw relaxing video "Crystal Chakra"
@@ -195,9 +199,21 @@ f2 %>%
            y = "Skin Conductance Reactivity") +
     theme_light()
 ```
+Good looking figure! I think have the "n= sample size" was one of the better aspects of their plot, so your plot would have been
+perfect if you included those as well. It looks like you jumped through a lot of hoops to get the confidence interval for the different means. Certainly not a problem grading wise, you get the right answer, but a simple way would be to calculate the interval, and then add to the mean to get the upper bound, and subtract from the mean to get the lower bound. Or ci() from the gmodels package
+
+m <- mean(var)
+interval <- 1.96*sd(var)/sqrt(n)    where n is the number of observations 
+low.bound <- m - interval
+upper.bound <- m + interval
+
+ci(var)
+
 Figure 2: Means of skin-conductance reactivity by video condition. 95% confidence intervals are in red.
 
 This plot shows mean skin conductivity when the subject was undergoing the video treatment. The confidence interval shows the range of skin conductivity for those of the different video treatments and see that an increase in anxiety is associated with an incresae in skin conductivity.
+
+Excellent to have a description for what figure 2 is showing.
 
 \newpage
 ## Table 1
@@ -232,6 +248,8 @@ stargazer(t1_anxiety, t1_imm,
 Note. Model (1) shows the effect of the treatment (anxiety) on physiological reactivity while Model (2) shows the effects of physiological reactivity on immigration preferences, controlling for the story condition. Both models includes only Neutral & Anxiety conditions (Relax condition is excluded).
 Standard errors in brackets.
 
+Perfect replication of Table 1. Maybe a bit more about why this table is important would be helpful to the reader.
+
 \newpage
 ## Figure 3
 ```{r fig3, results='asis'}
@@ -242,6 +260,8 @@ Standard errors in brackets.
 # anxiety dataset having fewer fields. As a result, I used the overall data [my
 # data] instead of loading in the anxiety.csv since they contain the same
 # information, just not all of the same fields.
+
+Perfectly acceptable choice.
 
 # Outcome Model. This is the same as the immigration model from table 1. I
 # created a new variable just to make the code more readable for this block.
@@ -259,6 +279,10 @@ outcome <- t1_imm
 # preference outcome model takes into consideration skin conductivity while the
 # mediator looks at the impact of skin conductivity based on teh anxiety and
 # story condition which is also used in the outcome model.
+
+Brief aside: Mediation analysis is attempting to see how much the effect of treatment (anxiety) is operating through the mediator (skin conductivity). So there is a direct effect (Anxiety -> Immigration Atts), but there is also an indirect effect (Anx -> Skin Cond. -> Immigration Atts). Mediation analysis tells if and how much of the effect of anxiety is operating through skin conductivity. So they show there is no direct effect of anxiety, which means that the skin conductivity from anxiety is actually what is resulting in changes, not just anxiety. It's generally accepted that emotion has an effect on political attitudes, but these authors want to show that it's not just changes in emotion, it's actually changes in emotion that result in a physiological response, and that it's this physical response that is causing attitude change.
+
+
 mediator <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond + storycond)
 # summary(mediator)    # summarize results from model, used in development
 
@@ -291,6 +315,8 @@ plot(med_analysis, labels = c("ACME\n(Physiological \nReactivity)",
 Figure 3. Causal mediation plot. Treatment is anxiety video manipulation (compared to neutral condition), Mediator is skin conductance reactivity when answering immigration questions, Outcome is composite variable of immigration preferences. Horizontal lines represent 90% confidence intervals for estimates.
 
 This plot is used to show that skin conductivity served as a mediator between anxiety and immigration preferences in treatment conditions. The direct effects are also quantified under "Immigration Preferences" in Table 1.
+
+Really nice plot, excellent looking labels. Exactly what we were looking for.
 
 # Extension: Bayesian Models and Comparisons
 ```{r ex1}
@@ -333,6 +359,9 @@ pp_check(ideo_mod, "dens_overlay") +
 ```{r ex2, results='asis'}
 # Creating a new mediator that includes ideology as being a contributor to skin
 # conductivity as posited by the original article pg.12
+
+I think you may have meant to include ideology in the regression model below?
+
 ideo_mediator <- lm(data = anx_data, SCDBradSelfReport1_mean ~ anxcond + storycond)
 
 # Creating a mediation plot to see if the effects hold in the gaussian
@@ -347,6 +376,8 @@ plot(bayes_med, labels = c("ACME\n(Physiological \nReactivity)",
                            "Total Effect"),
      main = "Bayesian Model of Treatment Effects with and without Mediation", xlab = "Magnitude of Effect")
 ```
+
+This is a cool extension and a nice visualization, but the reader has to look at this for a bit to figure out what's going on. What do you mean predicted data in comparison to the actual immigration statistic in your comments? I know what you mean, but anyone who has not taken this class may be lost. Especially because it's in your comments and not in the actual report. Anything that helps explain the meaning of a figure should not be left in comments. No one should be left guessing what a figure in your replication/paper means. Remember, these take up valuable space, so if you inlcude them, make sure you tell the reader exactly what they are meant to convey. 
 
 Extension of Figure 3: This is a causal mediation plot for the Bayesian model of immigration preferences inclusive of ideological effects. The horizontal lines represent 90% confidence intervals for estimates. We see that the Direct Effects are lower as a result of the introduction of ideology as a factor on immigration preferences, but that the ACME (average causal mediation effect is largely unchanged). This plot still shows that physiological reactivity mediated the relationship between anxiety and political attitudes.
 
@@ -374,6 +405,10 @@ fit %>%
 ```
 
 Since the model fit is positive when doing a leave-one-out comparison on the original paper's model to a new model where ideology is considered in immigration preferences, this means that the model which considers ideology is a better predictor of immigration preferences than the original paper. 
+
+Why is the model fit better? Where did leave one out come from? What is magnitude? What does this have to do with predictivity? These are all questions that someone who reads this report might be asking and should be addressed in the report itself.
+
+Overall, great job!
 
 
 \newpage
